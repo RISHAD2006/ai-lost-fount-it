@@ -43,6 +43,10 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+# ✅ IMPORTANT FIX FOR RENDER (TABLE CREATION)
+with app.app_context():
+    db.create_all()
+
 # =========================
 # SUPABASE STORAGE
 # =========================
@@ -310,8 +314,5 @@ def delete_item(item_id):
 # RUN
 # =========================
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port)
