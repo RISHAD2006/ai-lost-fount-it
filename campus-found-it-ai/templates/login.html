@@ -87,8 +87,8 @@
 <div class="card">
     <h2>Welcome Back 👋</h2>
 
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
 
     <button onclick="login()">Login</button>
 
@@ -99,16 +99,21 @@
 
 <script>
 
-/* ✅ YOUR RENDER BACKEND URL */
 const API_URL = "https://ai-lost-fount-it.onrender.com";
 
 function goRegister() {
-    window.location.href = "register.html";
+    window.location.href = "/register-page";   // ✅ fixed
 }
 
 async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (!email || !password) {
+        document.getElementById("message").innerText = "Please fill all fields";
+        return;
+    }
 
     try {
         const res = await fetch(`${API_URL}/login`, {
@@ -120,7 +125,7 @@ async function login() {
         const data = await res.json();
 
         document.getElementById("message").innerText =
-            data.message || data.error || "Login failed";
+            data.message || "Login failed";
 
         if (res.ok) {
             localStorage.setItem("user_id", data.user_id);
@@ -128,7 +133,7 @@ async function login() {
             localStorage.setItem("email", data.email);
 
             setTimeout(() => {
-                window.location.href = "dashboard.html";
+                window.location.href = "/dashboard-page";   // ✅ fixed
             }, 800);
         }
 
