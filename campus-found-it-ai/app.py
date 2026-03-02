@@ -43,10 +43,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-# ✅ IMPORTANT FIX FOR RENDER (TABLE CREATION)
-with app.app_context():
-    db.create_all()
-
 # =========================
 # SUPABASE STORAGE
 # =========================
@@ -84,6 +80,11 @@ class Item(db.Model):
     user_id = db.Column(db.Integer)
     image_filename = db.Column(db.String(500))
     matched = db.Column(db.Boolean, default=False)
+
+
+# ✅ IMPORTANT: CREATE TABLES AFTER MODELS
+with app.app_context():
+    db.create_all()
 
 # =========================
 # FRONTEND PAGE ROUTES
