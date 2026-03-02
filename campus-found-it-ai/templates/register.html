@@ -87,9 +87,9 @@
 <div class="card">
     <h2>Create Account ✨</h2>
 
-    <input type="text" id="name" placeholder="Full Name">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+    <input type="text" id="name" placeholder="Full Name" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
 
     <button onclick="register()">Register</button>
 
@@ -100,17 +100,22 @@
 
 <script>
 
-/* ✅ YOUR RENDER BACKEND URL */
 const API_URL = "https://ai-lost-fount-it.onrender.com";
 
 function goLogin() {
-    window.location.href = "login.html";
+    window.location.href = "/login-page";   // ✅ fixed
 }
 
 async function register() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (!name || !email || !password) {
+        document.getElementById("message").innerText = "Please fill all fields";
+        return;
+    }
 
     try {
         const res = await fetch(`${API_URL}/register`, {
@@ -120,12 +125,13 @@ async function register() {
         });
 
         const data = await res.json();
+
         document.getElementById("message").innerText =
-            data.message || data.error || "Registration failed";
+            data.message || "Registration failed";
 
         if (res.ok) {
             setTimeout(() => {
-                window.location.href = "login.html";
+                window.location.href = "/login-page";   // ✅ fixed
             }, 1000);
         }
 
