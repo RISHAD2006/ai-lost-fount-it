@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -13,16 +13,16 @@ import uuid
 import numpy as np
 import requests
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 CORS(app)
 
 # =========================
-# SOCKET IO (Phase 3)
+# SOCKET IO
 # =========================
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # =========================
-# ENV VARIABLES (PRODUCTION SAFE)
+# ENV VARIABLES
 # =========================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -33,20 +33,18 @@ EMAIL_PASS = os.environ.get("EMAIL_PASS")
 if not DATABASE_URL:
     raise Exception("DATABASE_URL not set")
 
-# Render postgres fix
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # =========================
-# DATABASE CONFIG (Supabase PostgreSQL)
+# DATABASE CONFIG
 # =========================
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
 # =========================
-# SUPABASE STORAGE (Cloud Images)
+# SUPABASE STORAGE
 # =========================
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Supabase credentials missing")
@@ -62,7 +60,6 @@ app.config["MAIL_USE_TLS"] = True
 app.config["MAIL_USERNAME"] = EMAIL_USER
 app.config["MAIL_PASSWORD"] = EMAIL_PASS
 app.config["MAIL_DEFAULT_SENDER"] = EMAIL_USER
-
 mail = Mail(app)
 
 # =========================
@@ -85,10 +82,28 @@ class Item(db.Model):
     matched = db.Column(db.Boolean, default=False)
 
 # =========================
+# FRONTEND PAGE ROUTES
+# =========================
+@app.route("/")
+def index_page():
+    return render_template("index.html")
+
+@app.route("/login-page")
+def login_page():
+    return render_template("login.html")
+
+@app.route("/register-page")
+def register_page():
+    return render_template("register.html")
+
+@app.route("/dashboard-page")
+def dashboard_page():
+    return render_template("dashboard.html")
+
+# =========================
 # IMAGE SIMILARITY (SSIM)
 # =========================
 def calculate_image_similarity(file1_bytes, file2_url):
-
     try:
         nparr1 = np.frombuffer(file1_bytes, np.uint8)
         img1 = cv2.imdecode(nparr1, cv2.IMREAD_COLOR)
@@ -114,18 +129,10 @@ def calculate_image_similarity(file1_bytes, file2_url):
         return 0
 
 # =========================
-# HOME
-# =========================
-@app.route("/")
-def home():
-    return "AI Matching System Running 🚀"
-
-# =========================
-# REGISTER (SECURE)
+# REGISTER
 # =========================
 @app.route("/register", methods=["POST"])
 def register():
-
     data = request.get_json()
 
     if User.query.filter_by(email=data.get("email")).first():
@@ -145,11 +152,10 @@ def register():
     return jsonify({"message": "Registered successfully"})
 
 # =========================
-# LOGIN (SECURE)
+# LOGIN
 # =========================
 @app.route("/login", methods=["POST"])
 def login():
-
     data = request.get_json()
 
     user = User.query.filter_by(email=data.get("email")).first()
@@ -168,7 +174,7 @@ def login():
     })
 
 # =========================
-# UPLOAD + MATCH + EMAIL + LIVE ALERT
+# UPLOAD + MATCH
 # =========================
 @app.route("/upload", methods=["POST"])
 def upload_item():
@@ -187,7 +193,6 @@ def upload_item():
     unique_name = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
     file_bytes = image.read()
 
-    # Upload to Supabase Storage
     supabase.storage.from_("item-images").upload(
         path=unique_name,
         file=file_bytes,
@@ -221,7 +226,6 @@ def upload_item():
             continue
 
         similarity = calculate_image_similarity(file_bytes, item.image_filename)
-        print("Similarity:", similarity)
 
         if similarity >= 0.85:
 
@@ -232,50 +236,30 @@ def upload_item():
             user1 = db.session.get(User, new_item.user_id)
             user2 = db.session.get(User, item.user_id)
 
-            # 🔔 REAL-TIME MATCH EVENT
             socketio.emit("match_found", {
                 "message": "🔥 MATCH FOUND!",
                 "user1": user1.id,
                 "user2": user2.id
             })
 
-            # 📧 EMAIL
             if user1 and user2:
                 try:
                     msg1 = Message(
                         "🔥 Your Item Has Been Matched!",
                         recipients=[user1.email]
                     )
-                    msg1.body = f"""
-Good news!
-
-Your item '{new_item.title}' has been matched.
-
-Contact: {user2.email}
-
-Campus Found-It AI
-"""
+                    msg1.body = f"Your item '{new_item.title}' matched. Contact: {user2.email}"
                     mail.send(msg1)
 
                     msg2 = Message(
                         "🔥 Your Item Has Been Matched!",
                         recipients=[user2.email]
                     )
-                    msg2.body = f"""
-Good news!
-
-Your item '{item.title}' has been matched.
-
-Contact: {user1.email}
-
-Campus Found-It AI
-"""
+                    msg2.body = f"Your item '{item.title}' matched. Contact: {user1.email}"
                     mail.send(msg2)
 
-                    print("✅ Email sent successfully!")
-
                 except Exception as e:
-                    print("❌ Email Error:", e)
+                    print("Email Error:", e)
 
             return jsonify({
                 "message": "🔥 MATCH FOUND!",
