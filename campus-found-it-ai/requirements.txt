@@ -11,3 +11,5 @@ opencv-python-headless
 scikit-image
 numpy
 requests
+sendgrid
+python-dotenv
