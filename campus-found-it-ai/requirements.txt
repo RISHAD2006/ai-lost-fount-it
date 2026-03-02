@@ -1,9 +1,10 @@
 Flask
-Flask-SQLAlchemy
 Flask-Cors
+Flask-SQLAlchemy
 Flask-Mail
 Flask-SocketIO
 gunicorn
+eventlet==0.40.3
 psycopg2-binary
 supabase
 opencv-python-headless
