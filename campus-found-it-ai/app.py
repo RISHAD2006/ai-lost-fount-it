@@ -1,3 +1,12 @@
+# ======================================================
+# 🔥 IMPORTANT FOR EVENTLET (MUST BE FIRST)
+# ======================================================
+import eventlet
+eventlet.monkey_patch()
+
+# ======================================================
+# IMPORTS
+# ======================================================
 import os
 import uuid
 import cv2
@@ -15,16 +24,15 @@ from supabase import create_client
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-
 # ======================================================
 # APP INIT
 # ======================================================
 app = Flask(__name__, template_folder="templates")
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # ======================================================
-# ENV
+# ENV VARIABLES
 # ======================================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -43,6 +51,9 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 if not SENDGRID_API_KEY:
     raise Exception("SendGrid API key missing")
+
+if not FROM_EMAIL:
+    raise Exception("FROM_EMAIL missing")
 
 # ======================================================
 # DATABASE
@@ -70,7 +81,7 @@ class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
     description = db.Column(db.String(500))
-    status = db.Column(db.String(20))  # lost / found
+    status = db.Column(db.String(20))
     user_id = db.Column(db.Integer)
     image_url = db.Column(db.String(500))
     matched = db.Column(db.Boolean, default=False)
@@ -88,22 +99,23 @@ def send_email(to_email, subject, content):
             from_email=FROM_EMAIL,
             to_emails=to_email,
             subject=subject,
-            html_content=content
+            html_content=f"<strong>{content}</strong>"
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         sg.send(message)
-        print("Email sent")
+        print("Email sent to", to_email)
     except Exception as e:
         print("SendGrid Error:", e)
 
 # ======================================================
-# BETTER ORB MATCHING
+# ORB IMAGE MATCHING
 # ======================================================
 def orb_similarity(img1_bytes, img2_url):
     try:
         img1 = cv2.imdecode(np.frombuffer(img1_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
-        img2_bytes = requests.get(img2_url).content
-        img2 = cv2.imdecode(np.frombuffer(img2_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
+
+        response = requests.get(img2_url, timeout=10)
+        img2 = cv2.imdecode(np.frombuffer(response.content, np.uint8), cv2.IMREAD_GRAYSCALE)
 
         if img1 is None or img2 is None:
             return 0
@@ -124,8 +136,7 @@ def orb_similarity(img1_bytes, img2_url):
             if m.distance < 0.75 * n.distance:
                 good.append(m)
 
-        similarity_score = len(good)
-        return similarity_score
+        return len(good)
 
     except Exception as e:
         print("ORB Error:", e)
@@ -157,13 +168,16 @@ def dashboard_page():
 def register():
     data = request.get_json()
 
-    if User.query.filter_by(email=data["email"]).first():
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+
+    if User.query.filter_by(email=data.get("email")).first():
         return jsonify({"error": "Email already exists"}), 400
 
     user = User(
-        name=data["name"],
-        email=data["email"],
-        password=generate_password_hash(data["password"])
+        name=data.get("name"),
+        email=data.get("email"),
+        password=generate_password_hash(data.get("password"))
     )
 
     db.session.add(user)
@@ -177,15 +191,17 @@ def register():
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(email=data["email"]).first()
 
-    if not user or not check_password_hash(user.password, data["password"]):
+    user = User.query.filter_by(email=data.get("email")).first()
+
+    if not user or not check_password_hash(user.password, data.get("password")):
         return jsonify({"error": "Invalid credentials"}), 401
 
     return jsonify({
         "message": "Login successful",
         "user_id": user.id,
-        "name": user.name
+        "name": user.name,
+        "email": user.email
     })
 
 # ======================================================
@@ -197,15 +213,18 @@ def upload():
     title = request.form.get("title")
     description = request.form.get("description")
     status = request.form.get("status")
-    user_id = int(request.form.get("user_id"))
+    user_id = request.form.get("user_id")
     image = request.files.get("image")
 
-    if not image:
-        return jsonify({"error": "Image required"}), 400
+    if not title or not description or not status or not user_id or not image:
+        return jsonify({"error": "Missing fields"}), 400
+
+    user_id = int(user_id)
 
     file_bytes = image.read()
     unique_name = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
 
+    # Upload to Supabase
     supabase.storage.from_("item-images").upload(
         path=unique_name,
         file=file_bytes,
@@ -235,7 +254,7 @@ def upload():
 
         score = orb_similarity(file_bytes, item.image_url)
 
-        if score > 40:  # tuned threshold
+        if score > 40:
             new_item.matched = True
             item.matched = True
             db.session.commit()
@@ -243,23 +262,30 @@ def upload():
             user1 = db.session.get(User, user_id)
             user2 = db.session.get(User, item.user_id)
 
-            socketio.emit("match_found", {"message": "🔥 Match Found!"})
+            socketio.emit("match_found", {
+                "user1": user1.id,
+                "user2": user2.id
+            })
 
             if user1 and user2:
-                send_email(user1.email,
-                           "Match Found!",
-                           f"Your item '{title}' matched with '{item.title}'. Contact: {user2.email}")
+                send_email(
+                    user1.email,
+                    "Match Found!",
+                    f"Your item '{title}' matched. Contact: {user2.email}"
+                )
 
-                send_email(user2.email,
-                           "Match Found!",
-                           f"Your item '{item.title}' matched with '{title}'. Contact: {user1.email}")
+                send_email(
+                    user2.email,
+                    "Match Found!",
+                    f"Your item '{item.title}' matched. Contact: {user1.email}"
+                )
 
             return jsonify({"message": "🔥 MATCH FOUND!"})
 
     return jsonify({"message": "Uploaded successfully"})
 
 # ======================================================
-# PUBLIC LOST
+# PUBLIC ROUTES
 # ======================================================
 @app.route("/all-lost")
 def all_lost():
@@ -268,12 +294,10 @@ def all_lost():
         "id": i.id,
         "title": i.title,
         "description": i.description,
-        "image_url": i.image_url
+        "image_url": i.image_url,
+        "matched": i.matched
     } for i in items])
 
-# ======================================================
-# PUBLIC FOUND
-# ======================================================
 @app.route("/all-found")
 def all_found():
     items = Item.query.filter_by(status="found").all()
@@ -281,12 +305,10 @@ def all_found():
         "id": i.id,
         "title": i.title,
         "description": i.description,
-        "image_url": i.image_url
+        "image_url": i.image_url,
+        "matched": i.matched
     } for i in items])
 
-# ======================================================
-# MY ITEMS
-# ======================================================
 @app.route("/my-items/<int:user_id>")
 def my_items(user_id):
     items = Item.query.filter_by(user_id=user_id).all()
