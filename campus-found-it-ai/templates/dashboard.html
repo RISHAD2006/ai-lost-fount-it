@@ -3,12 +3,12 @@
 <head>
     <title>Campus Found-It AI</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- 🔥 SocketIO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
     <style>
-        /* ✅ YOUR FULL ORIGINAL CSS — UNCHANGED */
         body {
             margin: 0;
             font-family: 'Segoe UI', sans-serif;
@@ -131,6 +131,7 @@
             font-weight: bold;
             display: none;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 9999;
         }
     </style>
 </head>
@@ -173,19 +174,18 @@
 
 <script>
 
-/* ✅ IMPORTANT FIX */
 const API_URL = window.location.origin;
 
 const user_id = localStorage.getItem("user_id");
 const name = localStorage.getItem("name");
 const email = localStorage.getItem("email");
 
-document.getElementById("userInfo").innerText =
-    name + " (" + email + ")";
-
 if (!user_id) {
     window.location.href = "/login-page";
 }
+
+document.getElementById("userInfo").innerText =
+    (name || "") + " (" + (email || "") + ")";
 
 function logout() {
     localStorage.clear();
@@ -194,13 +194,17 @@ function logout() {
 
 function showNotification(message) {
     const box = document.getElementById("notification");
-    box.innerText = message;
+    box.innerText = message || "Action completed";
     box.style.display = "block";
     setTimeout(() => box.style.display = "none", 4000);
 }
 
-/* 🔥 SOCKET CONNECTION */
+/* 🔥 SOCKET */
 const socket = io(API_URL);
+
+socket.on("connect", () => {
+    console.log("Socket connected");
+});
 
 socket.on("match_found", function(data){
 
@@ -236,45 +240,53 @@ async function uploadItem() {
     formData.append("user_id", user_id);
     formData.append("image", image);
 
-    const res = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        body: formData
-    });
+    try {
+        const res = await fetch(`${API_URL}/upload`, {
+            method: "POST",
+            body: formData
+        });
 
-    const data = await res.json();
+        const data = await res.json();
+        showNotification(data.message);
+        loadItems();
 
-    showNotification(data.message);
-
-    loadItems();
+    } catch (err) {
+        alert("Upload failed");
+    }
 }
 
 async function loadItems() {
-    const res = await fetch(`${API_URL}/my-items/${user_id}`);
-    const items = await res.json();
+    try {
+        const res = await fetch(`${API_URL}/my-items/${user_id}`);
+        const items = await res.json();
 
-    const container = document.getElementById("itemsContainer");
-    container.innerHTML = "";
+        const container = document.getElementById("itemsContainer");
+        container.innerHTML = "";
 
-    items.forEach(item => {
-        container.innerHTML += `
-            <div class="item-card">
-                <img src="${item.image_url}">
-                <h4>${item.title}</h4>
-                <p>${item.description}</p>
+        items.forEach(item => {
+            container.innerHTML += `
+                <div class="item-card">
+                    <img src="${item.image_url}">
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
 
-                <span class="badge ${item.status}">
-                    ${item.status.toUpperCase()}
-                </span>
+                    <span class="badge ${item.status}">
+                        ${item.status.toUpperCase()}
+                    </span>
 
-                ${item.matched ? '<span class="badge matched">AI MATCHED</span>' : ''}
+                    ${item.matched ? '<span class="badge matched">AI MATCHED</span>' : ''}
 
-                <button class="delete-btn"
-                    onclick="deleteItem(${item.id})">
-                    Delete
-                </button>
-            </div>
-        `;
-    });
+                    <button class="delete-btn"
+                        onclick="deleteItem(${item.id})">
+                        Delete
+                    </button>
+                </div>
+            `;
+        });
+
+    } catch (err) {
+        console.log("Load failed");
+    }
 }
 
 async function deleteItem(id) {
