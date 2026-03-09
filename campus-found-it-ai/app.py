@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -19,7 +22,7 @@ CORS(app)
 # =========================
 # SOCKET IO
 # =========================
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # =========================
 # ENV VARIABLES
@@ -80,6 +83,12 @@ class Item(db.Model):
     user_id = db.Column(db.Integer)
     image_filename = db.Column(db.String(500))
     matched = db.Column(db.Boolean, default=False)
+
+# =========================
+# CREATE TABLES
+# =========================
+with app.app_context():
+    db.create_all()
 
 # =========================
 # FRONTEND PAGE ROUTES
@@ -242,25 +251,6 @@ def upload_item():
                 "user2": user2.id
             })
 
-            if user1 and user2:
-                try:
-                    msg1 = Message(
-                        "🔥 Your Item Has Been Matched!",
-                        recipients=[user1.email]
-                    )
-                    msg1.body = f"Your item '{new_item.title}' matched. Contact: {user2.email}"
-                    mail.send(msg1)
-
-                    msg2 = Message(
-                        "🔥 Your Item Has Been Matched!",
-                        recipients=[user2.email]
-                    )
-                    msg2.body = f"Your item '{item.title}' matched. Contact: {user1.email}"
-                    mail.send(msg2)
-
-                except Exception as e:
-                    print("Email Error:", e)
-
             return jsonify({
                 "message": "🔥 MATCH FOUND!",
                 "similarity": round(similarity * 100, 2)
@@ -305,14 +295,3 @@ def delete_item(item_id):
     db.session.commit()
 
     return jsonify({"message": "Deleted successfully"})
-
-# =========================
-# RUN
-# =========================
-if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
-    port = int(os.environ.get("PORT", 10000))
-    socketio.run(app, host="0.0.0.0", port=port)
-
