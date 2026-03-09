@@ -5,106 +5,21 @@
 <title>Campus Found-It AI</title>
 <meta charset="UTF-8">
 
+<link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1828/1828640.png">
+
+<link rel="stylesheet" href="/static/style.css">
+
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-
-<style>
-
-body{
-font-family:Arial;
-margin:0;
-background:#f4f6f9;
-}
-
-.navbar{
-background:#1f2937;
-color:white;
-padding:15px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-}
-
-.container{
-padding:30px;
-}
-
-.card{
-background:white;
-padding:20px;
-border-radius:10px;
-margin-bottom:20px;
-box-shadow:0 4px 10px rgba(0,0,0,0.08);
-}
-
-input,textarea,select{
-width:100%;
-padding:10px;
-margin-top:8px;
-margin-bottom:12px;
-border-radius:6px;
-border:1px solid #ccc;
-}
-
-button{
-padding:10px;
-border:none;
-border-radius:6px;
-background:#2563eb;
-color:white;
-cursor:pointer;
-}
-
-.items{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-gap:20px;
-}
-
-.item{
-background:white;
-padding:15px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,0.08);
-}
-
-.item img{
-width:100%;
-height:180px;
-object-fit:cover;
-border-radius:8px;
-}
-
-.badge{
-display:inline-block;
-padding:4px 8px;
-border-radius:5px;
-color:white;
-font-size:12px;
-margin-top:5px;
-}
-
-.lost{background:#e74c3c;}
-.found{background:#2ecc71;}
-.match{background:#8e44ad;}
-
-.popup{
-position:fixed;
-top:20px;
-right:20px;
-background:#8e44ad;
-color:white;
-padding:15px 20px;
-border-radius:8px;
-display:none;
-}
-
-</style>
+<script src="/static/script.js"></script>
 
 </head>
 
 <body>
 
+<!-- NAVBAR -->
+
 <div class="navbar">
+
 <h2>Campus Found-It AI</h2>
 
 <div>
@@ -114,11 +29,15 @@ display:none;
 
 </div>
 
+<!-- MATCH POPUP -->
+
 <div class="popup" id="popup">
 🔥 AI MATCH FOUND!
 </div>
 
 <div class="container">
+
+<!-- UPLOAD CARD -->
 
 <div class="card">
 
@@ -139,6 +58,8 @@ display:none;
 
 </div>
 
+<!-- ITEMS CARD -->
+
 <div class="card">
 
 <h3>My Items</h3>
@@ -151,151 +72,21 @@ display:none;
 
 <script>
 
-const API = window.location.origin
+/* USER DATA */
 
 const user_id = localStorage.getItem("user_id")
 const name = localStorage.getItem("name")
 const email = localStorage.getItem("email")
 
+/* LOGIN CHECK */
+
 if(!user_id){
 window.location="/login-page"
 }
 
-document.getElementById("user").innerText = name+" ("+email+")"
+/* SHOW USER */
 
-function logout(){
-
-localStorage.clear()
-window.location="/login-page"
-
-}
-
-/* SOCKET CONNECTION */
-
-const socket = io(API)
-
-socket.on("match_found",data=>{
-
-if(data.user1==user_id || data.user2==user_id){
-
-const p=document.getElementById("popup")
-
-p.style.display="block"
-
-setTimeout(()=>{
-p.style.display="none"
-},4000)
-
-loadItems()
-
-}
-
-})
-
-/* UPLOAD ITEM */
-
-async function uploadItem(){
-
-const title=document.getElementById("title").value
-const description=document.getElementById("description").value
-const status=document.getElementById("status").value
-const image=document.getElementById("image").files[0]
-
-if(!title || !description || !image){
-
-alert("Please fill all fields")
-return
-
-}
-
-const form=new FormData()
-
-form.append("title",title)
-form.append("description",description)
-form.append("status",status)
-form.append("user_id",user_id)
-form.append("image",image)
-
-const res=await fetch(API+"/upload",{
-
-method:"POST",
-body:form
-
-})
-
-const data=await res.json()
-
-alert(data.message)
-
-document.getElementById("title").value=""
-document.getElementById("description").value=""
-document.getElementById("image").value=""
-
-loadItems()
-
-}
-
-/* LOAD ITEMS */
-
-async function loadItems(){
-
-const res=await fetch(API+"/my-items/"+user_id)
-
-const items=await res.json()
-
-const container=document.getElementById("items")
-
-container.innerHTML=""
-
-items.forEach(i=>{
-
-container.innerHTML+=`
-
-<div class="item">
-
-<img src="${i.image_url}">
-
-<h4>${i.title}</h4>
-
-<p>${i.description}</p>
-
-<span class="badge ${i.status}">
-${i.status}
-</span>
-
-${i.matched?'<span class="badge match">AI MATCH</span>':''}
-
-<br><br>
-
-<button onclick="deleteItem(${i.id})">
-Delete
-</button>
-
-</div>
-
-`
-
-})
-
-}
-
-/* DELETE ITEM */
-
-async function deleteItem(id){
-
-if(!confirm("Delete item?")) return
-
-await fetch(API+"/delete/"+id,{
-method:"DELETE"
-})
-
-loadItems()
-
-}
-
-/* INITIAL LOAD */
-
-loadItems()
+document.getElementById("user").innerText = name + " (" + email + ")"
 
 </script>
 
