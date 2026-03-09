@@ -9,3 +9,4 @@ opencv-python-headless
 numpy
 scikit-image
 requests
+eventlet
