@@ -15,7 +15,7 @@ import requests
 app = Flask(__name__, template_folder="templates")
 CORS(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 # ================================
 # ENV VARIABLES
@@ -24,7 +24,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-if DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # ================================
@@ -82,11 +82,12 @@ def dashboard():
     return render_template("dashboard.html")
 
 # ================================
-# IMAGE MATCHING
+# IMAGE MATCHING FUNCTION
 # ================================
 def image_similarity(file_bytes, url):
 
     try:
+
         img1 = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
 
         response = requests.get(url)
@@ -105,6 +106,7 @@ def image_similarity(file_bytes, url):
     except:
         return 0
 
+
 # ================================
 # REGISTER
 # ================================
@@ -113,8 +115,11 @@ def register():
 
     data = request.get_json()
 
+    if not data:
+        return jsonify({"message":"Invalid data"}),400
+
     if User.query.filter_by(email=data["email"]).first():
-        return jsonify({"message":"Email exists"}),400
+        return jsonify({"message":"Email already exists"}),400
 
     user = User(
         name=data["name"],
@@ -170,7 +175,7 @@ def upload():
     filename = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
     file_bytes = image.read()
 
-    # upload to supabase
+    # upload image to supabase storage
     supabase.storage.from_("item-images").upload(
         filename,
         file_bytes,
@@ -190,7 +195,9 @@ def upload():
     db.session.add(new_item)
     db.session.commit()
 
-    # MATCHING
+    # ================================
+    # AI MATCHING
+    # ================================
     opposite = "found" if status=="lost" else "lost"
 
     candidates = Item.query.filter_by(status=opposite,matched=False).all()
@@ -220,7 +227,7 @@ def upload():
 
 
 # ================================
-# MY ITEMS
+# GET MY ITEMS
 # ================================
 @app.route("/my-items/<int:user_id>")
 def my_items(user_id):
@@ -261,7 +268,7 @@ def delete(id):
 
 
 # ================================
-# RUN
+# SERVER RUN
 # ================================
 if __name__ == "__main__":
 
