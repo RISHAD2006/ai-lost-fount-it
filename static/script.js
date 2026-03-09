@@ -1,82 +1,92 @@
-const API = window.location.origin
+const API = window.location.origin;
+
+/* LOGOUT */
 
 function logout(){
-    localStorage.clear()
-    window.location = "/login-page"
+    localStorage.clear();
+    window.location = "/login-page";
 }
 
 /* SOCKET CONNECTION */
 
-const socket = io(API)
+const socket = io(API);
 
 socket.on("connect", () => {
-    console.log("Socket connected")
-})
+    console.log("Socket connected");
+});
+
+/* AI MATCH EVENT */
 
 socket.on("match_found", data => {
 
-    const user_id = localStorage.getItem("user_id")
+    const user_id = localStorage.getItem("user_id");
 
     if(data.user1 == user_id || data.user2 == user_id){
 
-        const popup = document.getElementById("popup")
+        const popup = document.getElementById("popup");
 
-        popup.style.display = "block"
+        if(popup){
+            popup.style.display = "block";
 
-        setTimeout(()=>{
-            popup.style.display = "none"
-        },4000)
+            setTimeout(()=>{
+                popup.style.display = "none";
+            },4000);
+        }
 
-        loadItems()
+        loadItems();
     }
 
-})
+});
 
 /* UPLOAD ITEM */
 
 async function uploadItem(){
 
-    const user_id = localStorage.getItem("user_id")
+    const user_id = localStorage.getItem("user_id");
 
-    const title = document.getElementById("title").value
-    const description = document.getElementById("description").value
-    const status = document.getElementById("status").value
-    const image = document.getElementById("image").files[0]
+    const title = document.getElementById("title").value;
+    const description = document.getElementById("description").value;
+    const status = document.getElementById("status").value;
+    const image = document.getElementById("image").files[0];
 
     if(!title || !description || !image){
-        alert("Please fill all fields")
-        return
+        alert("Please fill all fields");
+        return;
     }
 
-    const form = new FormData()
+    const form = new FormData();
 
-    form.append("title",title)
-    form.append("description",description)
-    form.append("status",status)
-    form.append("user_id",user_id)
-    form.append("image",image)
+    form.append("title",title);
+    form.append("description",description);
+    form.append("status",status);
+    form.append("user_id",user_id);
+    form.append("image",image);
 
     try{
 
-        const res = await fetch(API+"/upload",{
+        const res = await fetch(API + "/upload",{
             method:"POST",
             body:form
-        })
+        });
 
-        const data = await res.json()
+        if(!res.ok){
+            throw new Error("Upload failed");
+        }
 
-        alert(data.message)
+        const data = await res.json();
 
-        document.getElementById("title").value=""
-        document.getElementById("description").value=""
-        document.getElementById("image").value=""
+        alert(data.message || "Upload success");
 
-        loadItems()
+        document.getElementById("title").value="";
+        document.getElementById("description").value="";
+        document.getElementById("image").value="";
+
+        loadItems();
 
     }catch(err){
 
-        console.error(err)
-        alert("Upload failed")
+        console.error(err);
+        alert("Upload failed");
 
     }
 
@@ -86,25 +96,32 @@ async function uploadItem(){
 
 async function loadItems(){
 
-    const user_id = localStorage.getItem("user_id")
+    const user_id = localStorage.getItem("user_id");
+
+    if(!user_id) return;
 
     try{
 
-        const res = await fetch(API+"/my-items/"+user_id)
+        const res = await fetch(API + "/my-items/" + user_id);
 
-        const items = await res.json()
+        if(!res.ok){
+            throw new Error("Failed to load items");
+        }
 
-        const container = document.getElementById("items")
+        const items = await res.json();
 
-        container.innerHTML=""
+        const container = document.getElementById("items");
+
+        if(!container) return;
+
+        container.innerHTML="";
 
         items.forEach(i=>{
 
             container.innerHTML += `
-
             <div class="item">
 
-            <img src="${i.image_url}">
+            <img src="${i.image_url}" alt="item">
 
             <h4>${i.title}</h4>
 
@@ -123,13 +140,12 @@ async function loadItems(){
             </button>
 
             </div>
-
-            `
-        })
+            `;
+        });
 
     }catch(err){
 
-        console.log(err)
+        console.log(err);
 
     }
 
@@ -139,19 +155,21 @@ async function loadItems(){
 
 async function deleteItem(id){
 
-    if(!confirm("Delete item?")) return
+    if(!confirm("Delete item?")) return;
 
     try{
 
-        await fetch(API+"/delete/"+id,{
+        const res = await fetch(API + "/delete/" + id,{
             method:"DELETE"
-        })
+        });
 
-        loadItems()
+        if(res.ok){
+            loadItems();
+        }
 
     }catch(err){
 
-        console.log(err)
+        console.log(err);
 
     }
 
@@ -159,4 +177,4 @@ async function deleteItem(id){
 
 /* INITIAL LOAD */
 
-loadItems()
+loadItems();
