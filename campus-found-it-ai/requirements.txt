@@ -10,5 +10,3 @@ opencv-python-headless
 scikit-image
 numpy
 requests
-eventlet
-python-dotenv
