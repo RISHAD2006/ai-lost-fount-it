@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -82,7 +85,7 @@ def dashboard():
     return render_template("dashboard.html")
 
 # ================================
-# IMAGE MATCHING FUNCTION
+# IMAGE MATCHING
 # ================================
 def image_similarity(file_bytes, url):
 
@@ -175,14 +178,14 @@ def upload():
     filename = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
     file_bytes = image.read()
 
-    # upload image to supabase storage
+    # upload to supabase
     supabase.storage.from_("item-images").upload(
         filename,
         file_bytes,
         {"content-type":image.content_type}
     )
 
-    public_url = supabase.storage.from_("item-images").get_public_url(filename)["publicURL"]
+    public_url = supabase.storage.from_("item-images").get_public_url(filename)
 
     new_item = Item(
         title=title,
@@ -195,9 +198,7 @@ def upload():
     db.session.add(new_item)
     db.session.commit()
 
-    # ================================
-    # AI MATCHING
-    # ================================
+    # AI matching
     opposite = "found" if status=="lost" else "lost"
 
     candidates = Item.query.filter_by(status=opposite,matched=False).all()
@@ -277,4 +278,4 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT",10000))
 
-    socketio.run(app,host="0.0.0.0",port=port)
+    app.run(host="0.0.0.0",port=port)
