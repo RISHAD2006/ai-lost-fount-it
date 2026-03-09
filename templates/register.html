@@ -1,134 +1,154 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Register - Campus Found-It AI</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+<title>Register - Campus Found-It AI</title>
 
-        .card {
-            background: white;
-            padding: 40px;
-            width: 350px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            text-align: center;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        h2 {
-            margin-bottom: 20px;
-            color: #2a5298;
-        }
+<link rel="stylesheet" href="/static/style.css">
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
+<style>
 
-        input:focus {
-            outline: none;
-            border-color: #2a5298;
-        }
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(135deg,#1e3c72,#2a5298);
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
 
-        button {
-            width: 100%;
-            padding: 10px;
-            background: #2a5298;
-            border: none;
-            color: white;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: 0.3s;
-        }
+.card{
+background:white;
+padding:40px;
+width:350px;
+border-radius:12px;
+box-shadow:0 10px 25px rgba(0,0,0,0.2);
+text-align:center;
+}
 
-        button:hover {
-            background: #1e3c72;
-            transform: translateY(-2px);
-        }
+h2{
+margin-bottom:20px;
+color:#2a5298;
+}
 
-        .link-btn {
-            background: none;
-            color: #2a5298;
-            border: none;
-            margin-top: 10px;
-            cursor: pointer;
-            font-size: 14px;
-        }
+input{
+width:100%;
+padding:10px;
+margin:10px 0;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:14px;
+}
 
-        .link-btn:hover {
-            text-decoration: underline;
-        }
+input:focus{
+outline:none;
+border-color:#2a5298;
+}
 
-        .message {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #e74c3c;
-        }
-    </style>
+button{
+width:100%;
+padding:10px;
+background:#2a5298;
+border:none;
+color:white;
+font-weight:bold;
+border-radius:6px;
+cursor:pointer;
+margin-top:10px;
+transition:0.3s;
+}
+
+button:hover{
+background:#1e3c72;
+transform:translateY(-2px);
+}
+
+.link-btn{
+background:none;
+color:#2a5298;
+border:none;
+margin-top:10px;
+cursor:pointer;
+font-size:14px;
+}
+
+.link-btn:hover{
+text-decoration:underline;
+}
+
+.message{
+margin-top:10px;
+font-size:14px;
+color:#e74c3c;
+}
+
+</style>
+
 </head>
+
 <body>
 
 <div class="card">
-    <h2>Create Account ✨</h2>
 
-    <input type="text" id="name" placeholder="Full Name">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
+<h2>Create Account ✨</h2>
 
-    <button onclick="register()">Register</button>
+<input type="text" id="name" placeholder="Full Name">
 
-    <button class="link-btn" onclick="goLogin()">Already have an account? Login</button>
+<input type="email" id="email" placeholder="Email">
 
-    <div class="message" id="message"></div>
+<input type="password" id="password" placeholder="Password">
+
+<button onclick="register()">Register</button>
+
+<button class="link-btn" onclick="goLogin()">Already have an account? Login</button>
+
+<div class="message" id="message"></div>
+
 </div>
 
 <script>
 
-/* ✅ FIXED FOR ONLINE DEPLOY */
+/* API URL for Render Deploy */
+
 const API_URL = window.location.origin;
 
-function goLogin() {
-    window.location.href = "/login-page";
+function goLogin(){
+window.location.href="/login-page";
 }
 
-async function register() {
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+async function register(){
 
-    const res = await fetch(`${API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
-    });
+const name=document.getElementById("name").value;
+const email=document.getElementById("email").value;
+const password=document.getElementById("password").value;
 
-    const data = await res.json();
-    document.getElementById("message").innerText = data.message || data.error;
+const res=await fetch(`${API_URL}/register`,{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({name,email,password})
+});
 
-    if (res.ok) {
-        setTimeout(() => {
-            window.location.href = "/login-page";
-        }, 1000);
-    }
+const data=await res.json();
+
+document.getElementById("message").innerText=data.message||data.error;
+
+if(res.ok){
+
+setTimeout(()=>{
+window.location.href="/login-page";
+},1000);
+
+}
+
 }
 
 </script>
+
+<script src="/static/script.js"></script>
 
 </body>
 </html>
