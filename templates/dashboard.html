@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <title>Campus Found-It AI</title>
 <meta charset="UTF-8">
 
@@ -98,20 +99,23 @@ display:none;
 }
 
 </style>
+
 </head>
 
 <body>
 
 <div class="navbar">
 <h2>Campus Found-It AI</h2>
+
 <div>
 <span id="user"></span>
 <button onclick="logout()">Logout</button>
 </div>
+
 </div>
 
 <div class="popup" id="popup">
-🔥 MATCH FOUND!
+🔥 AI MATCH FOUND!
 </div>
 
 <div class="container">
@@ -154,13 +158,10 @@ const name = localStorage.getItem("name")
 const email = localStorage.getItem("email")
 
 if(!user_id){
-
 window.location="/login-page"
-
 }
 
-document.getElementById("user").innerText =
-name+" ("+email+")"
+document.getElementById("user").innerText = name+" ("+email+")"
 
 function logout(){
 
@@ -169,6 +170,8 @@ window.location="/login-page"
 
 }
 
+/* SOCKET CONNECTION */
+
 const socket = io(API)
 
 socket.on("match_found",data=>{
@@ -176,15 +179,20 @@ socket.on("match_found",data=>{
 if(data.user1==user_id || data.user2==user_id){
 
 const p=document.getElementById("popup")
+
 p.style.display="block"
 
-setTimeout(()=>p.style.display="none",4000)
+setTimeout(()=>{
+p.style.display="none"
+},4000)
 
 loadItems()
 
 }
 
 })
+
+/* UPLOAD ITEM */
 
 async function uploadItem(){
 
@@ -195,7 +203,7 @@ const image=document.getElementById("image").files[0]
 
 if(!title || !description || !image){
 
-alert("Fill all fields")
+alert("Please fill all fields")
 return
 
 }
@@ -219,9 +227,15 @@ const data=await res.json()
 
 alert(data.message)
 
+document.getElementById("title").value=""
+document.getElementById("description").value=""
+document.getElementById("image").value=""
+
 loadItems()
 
 }
+
+/* LOAD ITEMS */
 
 async function loadItems(){
 
@@ -265,15 +279,21 @@ Delete
 
 }
 
+/* DELETE ITEM */
+
 async function deleteItem(id){
 
 if(!confirm("Delete item?")) return
 
-await fetch(API+"/delete/"+id,{method:"DELETE"})
+await fetch(API+"/delete/"+id,{
+method:"DELETE"
+})
 
 loadItems()
 
 }
+
+/* INITIAL LOAD */
 
 loadItems()
 
