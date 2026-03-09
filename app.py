@@ -9,13 +9,18 @@ from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 from skimage.metrics import structural_similarity as ssim
 from supabase import create_client
+
 import numpy as np
 import cv2
 import uuid
 import os
 import requests
 
-app = Flask(__name__, template_folder="templates")
+# ================================
+# APP
+# ================================
+
+app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
@@ -23,6 +28,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 # ================================
 # ENV VARIABLES
 # ================================
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -33,6 +39,7 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 # ================================
 # DATABASE
 # ================================
+
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -41,12 +48,15 @@ db = SQLAlchemy(app)
 # ================================
 # SUPABASE
 # ================================
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================================
 # MODELS
 # ================================
+
 class User(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     email = db.Column(db.String(100), unique=True)
@@ -54,6 +64,7 @@ class User(db.Model):
 
 
 class Item(db.Model):
+
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200))
     description = db.Column(db.String(500))
@@ -65,6 +76,7 @@ class Item(db.Model):
 # ================================
 # PAGE ROUTES
 # ================================
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -87,6 +99,7 @@ def dashboard():
 # ================================
 # IMAGE MATCHING
 # ================================
+
 def image_similarity(file_bytes, url):
 
     try:
@@ -109,10 +122,10 @@ def image_similarity(file_bytes, url):
     except:
         return 0
 
-
 # ================================
 # REGISTER
 # ================================
+
 @app.route("/register", methods=["POST"])
 def register():
 
@@ -135,10 +148,10 @@ def register():
 
     return jsonify({"message":"Registered successfully"})
 
-
 # ================================
 # LOGIN
 # ================================
+
 @app.route("/login", methods=["POST"])
 def login():
 
@@ -159,10 +172,10 @@ def login():
         "email":user.email
     })
 
-
 # ================================
 # UPLOAD ITEM
 # ================================
+
 @app.route("/upload", methods=["POST"])
 def upload():
 
@@ -176,14 +189,20 @@ def upload():
         return jsonify({"message":"Image required"}),400
 
     filename = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
+
     file_bytes = image.read()
 
-    # upload to supabase
-    supabase.storage.from_("item-images").upload(
-        filename,
-        file_bytes,
-        {"content-type":image.content_type}
-    )
+    try:
+
+        supabase.storage.from_("item-images").upload(
+            filename,
+            file_bytes,
+            {"content-type":image.content_type}
+        )
+
+    except Exception as e:
+
+        return jsonify({"message":"Upload failed","error":str(e)}),500
 
     public_url = supabase.storage.from_("item-images").get_public_url(filename)
 
@@ -198,7 +217,10 @@ def upload():
     db.session.add(new_item)
     db.session.commit()
 
-    # AI matching
+    # ================================
+    # AI MATCH
+    # ================================
+
     opposite = "found" if status=="lost" else "lost"
 
     candidates = Item.query.filter_by(status=opposite,matched=False).all()
@@ -226,10 +248,10 @@ def upload():
 
     return jsonify({"message":"Item uploaded"})
 
+# ================================
+# GET ITEMS
+# ================================
 
-# ================================
-# GET MY ITEMS
-# ================================
 @app.route("/my-items/<int:user_id>")
 def my_items(user_id):
 
@@ -250,10 +272,10 @@ def my_items(user_id):
 
     return jsonify(result)
 
+# ================================
+# DELETE
+# ================================
 
-# ================================
-# DELETE ITEM
-# ================================
 @app.route("/delete/<int:id>",methods=["DELETE"])
 def delete(id):
 
@@ -267,10 +289,10 @@ def delete(id):
 
     return jsonify({"message":"Deleted"})
 
+# ================================
+# RUN SERVER
+# ================================
 
-# ================================
-# SERVER RUN
-# ================================
 if __name__ == "__main__":
 
     with app.app_context():
@@ -278,4 +300,4 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT",10000))
 
-    app.run(host="0.0.0.0",port=port)
+    socketio.run(app, host="0.0.0.0", port=port)
