@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -22,7 +19,7 @@ CORS(app)
 # =========================
 # SOCKET IO
 # =========================
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # =========================
 # ENV VARIABLES
@@ -84,11 +81,13 @@ class Item(db.Model):
     image_filename = db.Column(db.String(500))
     matched = db.Column(db.Boolean, default=False)
 
+
 # =========================
 # CREATE TABLES
 # =========================
 with app.app_context():
     db.create_all()
+
 
 # =========================
 # FRONTEND PAGE ROUTES
@@ -108,6 +107,7 @@ def register_page():
 @app.route("/dashboard-page")
 def dashboard_page():
     return render_template("dashboard.html")
+
 
 # =========================
 # IMAGE SIMILARITY (SSIM)
@@ -137,6 +137,7 @@ def calculate_image_similarity(file1_bytes, file2_url):
         print("Similarity error:", e)
         return 0
 
+
 # =========================
 # REGISTER
 # =========================
@@ -160,6 +161,7 @@ def register():
 
     return jsonify({"message": "Registered successfully"})
 
+
 # =========================
 # LOGIN
 # =========================
@@ -182,6 +184,7 @@ def login():
         "email": user.email
     })
 
+
 # =========================
 # UPLOAD + MATCH
 # =========================
@@ -202,11 +205,14 @@ def upload_item():
     unique_name = str(uuid.uuid4()) + "_" + secure_filename(image.filename)
     file_bytes = image.read()
 
-    supabase.storage.from_("item-images").upload(
-        path=unique_name,
-        file=file_bytes,
-        file_options={"content-type": image.content_type}
-    )
+    try:
+        supabase.storage.from_("item-images").upload(
+            unique_name,
+            file_bytes,
+            {"content-type": image.content_type}
+        )
+    except Exception as e:
+        print("Upload error:", e)
 
     public_url = supabase.storage.from_("item-images").get_public_url(unique_name)
 
@@ -251,12 +257,32 @@ def upload_item():
                 "user2": user2.id
             })
 
+            if user1 and user2:
+                try:
+                    msg1 = Message(
+                        "🔥 Your Item Has Been Matched!",
+                        recipients=[user1.email]
+                    )
+                    msg1.body = f"Your item '{new_item.title}' matched. Contact: {user2.email}"
+                    mail.send(msg1)
+
+                    msg2 = Message(
+                        "🔥 Your Item Has Been Matched!",
+                        recipients=[user2.email]
+                    )
+                    msg2.body = f"Your item '{item.title}' matched. Contact: {user1.email}"
+                    mail.send(msg2)
+
+                except Exception as e:
+                    print("Email Error:", e)
+
             return jsonify({
                 "message": "🔥 MATCH FOUND!",
                 "similarity": round(similarity * 100, 2)
             })
 
     return jsonify({"message": "Item uploaded successfully"})
+
 
 # =========================
 # MY ITEMS
@@ -280,6 +306,7 @@ def my_items(user_id):
 
     return jsonify(result)
 
+
 # =========================
 # DELETE
 # =========================
@@ -295,3 +322,15 @@ def delete_item(item_id):
     db.session.commit()
 
     return jsonify({"message": "Deleted successfully"})
+
+
+# =========================
+# RUN
+# =========================
+if __name__ == "__main__":
+
+    with app.app_context():
+        db.create_all()
+
+    port = int(os.environ.get("PORT", 10000))
+    socketio.run(app, host="0.0.0.0", port=port)
