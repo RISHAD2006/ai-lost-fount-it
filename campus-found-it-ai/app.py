@@ -19,14 +19,12 @@ import requests
 app = Flask(__name__, template_folder="templates")
 CORS(app)
 
-# =========================
-# SOCKET IO
-# =========================
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# =========================
+# =====================
 # ENV VARIABLES
-# =========================
+# =====================
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -36,32 +34,38 @@ EMAIL_PASS = os.environ.get("EMAIL_PASS")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# =========================
+# =====================
 # DATABASE
-# =========================
+# =====================
+
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db = SQLAlchemy(app)
 
-# =========================
+# =====================
 # SUPABASE
-# =========================
+# =====================
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# =========================
+# =====================
 # EMAIL
-# =========================
+# =====================
+
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
 app.config["MAIL_USERNAME"] = EMAIL_USER
 app.config["MAIL_PASSWORD"] = EMAIL_PASS
 app.config["MAIL_DEFAULT_SENDER"] = EMAIL_USER
+
 mail = Mail(app)
 
-# =========================
+# =====================
 # MODELS
-# =========================
+# =====================
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -79,18 +83,15 @@ class Item(db.Model):
     matched = db.Column(db.Boolean, default=False)
 
 
-# =========================
-# CREATE TABLES
-# =========================
 with app.app_context():
     db.create_all()
 
+# =====================
+# FRONTEND ROUTES
+# =====================
 
-# =========================
-# FRONTEND
-# =========================
 @app.route("/")
-def index_page():
+def home():
     return render_template("index.html")
 
 @app.route("/login-page")
@@ -101,20 +102,24 @@ def login_page():
 def register_page():
     return render_template("register.html")
 
-@app.route("/dashboard-page")
-def dashboard_page():
+@app.route("/dashboard")
+def dashboard():
     return render_template("dashboard.html")
 
 
-# =========================
+# =====================
 # IMAGE SIMILARITY
-# =========================
+# =====================
+
 def calculate_image_similarity(file1_bytes, file2_url):
+
     try:
+
         nparr1 = np.frombuffer(file1_bytes, np.uint8)
         img1 = cv2.imdecode(nparr1, cv2.IMREAD_COLOR)
 
         response = requests.get(file2_url)
+
         nparr2 = np.frombuffer(response.content, np.uint8)
         img2 = cv2.imdecode(nparr2, cv2.IMREAD_COLOR)
 
@@ -132,13 +137,14 @@ def calculate_image_similarity(file1_bytes, file2_url):
         return score
 
     except Exception as e:
-        print("Similarity error:",e)
+        print(e)
         return 0
 
 
-# =========================
+# =====================
 # REGISTER
-# =========================
+# =====================
+
 @app.route("/register", methods=["POST"])
 def register():
 
@@ -156,12 +162,13 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({"message":"Registered successfully"})
+    return jsonify({"message":"Registered"})
 
 
-# =========================
+# =====================
 # LOGIN
-# =========================
+# =====================
+
 @app.route("/login", methods=["POST"])
 def login():
 
@@ -173,43 +180,38 @@ def login():
         return jsonify({"message":"User not found"}),404
 
     if not check_password_hash(user.password,data["password"]):
-        return jsonify({"message":"Incorrect password"}),401
+        return jsonify({"message":"Wrong password"}),401
 
     return jsonify({
-        "message":"Login successful",
         "user_id":user.id,
         "name":user.name,
         "email":user.email
     })
 
 
-# =========================
+# =====================
 # UPLOAD ITEM
-# =========================
+# =====================
+
 @app.route("/upload", methods=["POST"])
 def upload_item():
 
     title = request.form.get("title")
     description = request.form.get("description")
-    status = request.form.get("status").lower()
+    status = request.form.get("status")
     user_id = int(request.form.get("user_id"))
     image = request.files.get("image")
-
-    if not title or not description or not image:
-        return jsonify({"error":"Missing fields"}),400
 
     unique_name = str(uuid.uuid4())+"_"+secure_filename(image.filename)
 
     file_bytes = image.read()
 
-    # upload to supabase
     supabase.storage.from_("item-images").upload(
         unique_name,
         file_bytes,
         {"content-type": image.content_type}
     )
 
-    # get public url
     public_url = supabase.storage.from_("item-images").get_public_url(unique_name)["publicUrl"]
 
     new_item = Item(
@@ -217,105 +219,72 @@ def upload_item():
         description=description,
         status=status,
         user_id=user_id,
-        image_filename=public_url,
-        matched=False
+        image_filename=public_url
     )
 
     db.session.add(new_item)
     db.session.commit()
 
-    # find opposite items
     opposite = "found" if status=="lost" else "lost"
 
-    candidates = Item.query.filter_by(
-        status=opposite,
-        matched=False
-    ).all()
+    items = Item.query.filter_by(status=opposite, matched=False).all()
 
-    for item in candidates:
+    for item in items:
 
         if item.user_id == user_id:
             continue
 
         similarity = calculate_image_similarity(file_bytes,item.image_filename)
 
-        print("Similarity:",similarity)
+        if similarity >= 0.6:
 
-        if similarity >= 0.60:
-
-            new_item.matched = True
-            item.matched = True
+            new_item.matched=True
+            item.matched=True
             db.session.commit()
 
-            user1 = db.session.get(User,new_item.user_id)
-            user2 = db.session.get(User,item.user_id)
-
             socketio.emit("match_found",{
-                "user1":user1.id,
-                "user2":user2.id
+                "user1":new_item.user_id,
+                "user2":item.user_id
             })
 
-            try:
+            return jsonify({"message":"🔥 MATCH FOUND"})
 
-                msg1 = Message(
-                    "Item Matched",
-                    recipients=[user1.email]
-                )
-                msg1.body = f"Your item matched! Contact {user2.email}"
-                mail.send(msg1)
-
-                msg2 = Message(
-                    "Item Matched",
-                    recipients=[user2.email]
-                )
-                msg2.body = f"Your item matched! Contact {user1.email}"
-                mail.send(msg2)
-
-            except Exception as e:
-                print("Mail error:",e)
-
-            return jsonify({
-                "message":"🔥 MATCH FOUND",
-                "similarity":round(similarity*100,2)
-            })
-
-    return jsonify({"message":"Item uploaded successfully"})
+    return jsonify({"message":"Item uploaded"})
 
 
-# =========================
+# =====================
 # MY ITEMS
-# =========================
+# =====================
+
 @app.route("/my-items/<int:user_id>")
 def my_items(user_id):
 
     items = Item.query.filter_by(user_id=user_id).all()
 
-    result=[]
+    data=[]
 
-    for item in items:
+    for i in items:
 
-        result.append({
-            "id":item.id,
-            "title":item.title,
-            "description":item.description,
-            "status":item.status,
-            "matched":item.matched,
-            "image_url":item.image_filename
+        data.append({
+            "id":i.id,
+            "title":i.title,
+            "description":i.description,
+            "status":i.status,
+            "matched":i.matched,
+            "image_url":i.image_filename
         })
 
-    return jsonify(result)
+    return jsonify(data)
 
 
-# =========================
+# =====================
 # DELETE
-# =========================
+# =====================
+
 @app.route("/delete/<int:item_id>",methods=["DELETE"])
 def delete_item(item_id):
 
     item = db.session.get(Item,item_id)
-
-    if not item:
-        return jsonify({"error":"Item not found"}),404
 
     db.session.delete(item)
     db.session.commit()
@@ -323,9 +292,10 @@ def delete_item(item_id):
     return jsonify({"message":"Deleted"})
 
 
-# =========================
+# =====================
 # RUN
-# =========================
+# =====================
+
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT",10000))
