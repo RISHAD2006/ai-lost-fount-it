@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero grid grid-2">
+  <div>
+    <div class="pill matched">AI-powered lost & found</div>
+    <h1 style="font-size:52px;line-height:1.05;margin:16px 0;">Recover lost items faster with a secure campus portal.</h1>
+    <p class="muted" style="font-size:18px;max-width:640px;">Students can report lost or found items, upload images, and get notified when the AI finds a likely match. Admins can review all reports from one panel.</p>
+    <div class="actions" style="margin-top:20px;">
+      <a class="btn" href="/register-page">Get Started</a>
+      <a class="btn secondary" href="/login-page">Student Login</a>
+      <a class="btn secondary" href="/admin/login">Admin Login</a>
+    </div>
+  </div>
+  <div class="card">
+    <h3>What’s new in this update</h3>
+    <ul class="muted" style="line-height:1.9;padding-left:18px;">
+      <li>Dedicated admin login screen</li>
+      <li>Admin dashboard with user, item, and match stats</li>
+      <li>View all users and all item reports</li>
+      <li>Change item status to lost, found, or returned</li>
+      <li>Delete problematic entries directly from admin panel</li>
+    </ul>
+  </div>
+</section>
+<section class="grid grid-4" style="margin-top:8px;">
+  <div class="card"><div class="stats">1</div><div class="muted">Shared reporting system</div></div>
+  <div class="card"><div class="stats">AI</div><div class="muted">Image similarity matching</div></div>
+  <div class="card"><div class="stats">24/7</div><div class="muted">Admin monitoring ready</div></div>
+  <div class="card"><div class="stats">Secure</div><div class="muted">Role-based admin access</div></div>
+</section>
+{% endblock %}

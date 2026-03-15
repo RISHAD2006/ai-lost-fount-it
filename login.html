@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="grid" style="max-width:520px;margin:48px auto;">
+  <div class="card">
+    <h2>Welcome Back</h2>
+    <p class="muted">Sign in to upload and manage your lost or found items.</p>
+    <div id="message"></div>
+    <form id="loginForm">
+      <label>Email<input type="email" name="email" required></label>
+      <label>Password<input type="password" name="password" required></label>
+      <button class="btn" type="submit">Login</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const payload = Object.fromEntries(form.entries());
+    const res = await fetch('/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await res.json();
+    document.getElementById('message').innerHTML = `<div class="notice">${data.message}</div>`;
+    if (res.ok) location.href = data.redirect || '/dashboard';
+  });
+</script>
+{% endblock %}

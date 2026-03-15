@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <h1>Student Dashboard</h1>
+  <p class="muted">Upload a lost or found item and review your reports.</p>
+</section>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Upload Item</h3>
+    <div id="message"></div>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <label>Title<input type="text" name="title" required></label>
+      <label>Description<textarea name="description" rows="4"></textarea></label>
+      <label>Status
+        <select name="status" required>
+          <option value="lost">Lost</option>
+          <option value="found">Found</option>
+        </select>
+      </label>
+      <label>Image<input type="file" name="image" accept="image/*" required></label>
+      <button class="btn" type="submit">Upload</button>
+    </form>
+  </div>
+  <div class="card">
+    <h3>My Items</h3>
+    <div id="itemsList" class="muted">Loading...</div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  const userId = {{ user.id }};
+
+  async function loadItems() {
+    const res = await fetch(`/my-items/${userId}`);
+    const items = await res.json();
+    if (!Array.isArray(items) || !items.length) {
+      document.getElementById('itemsList').innerHTML = '<div class="muted">No items uploaded yet.</div>';
+      return;
+    }
+    document.getElementById('itemsList').innerHTML = items.map(item => `
+      <div class="card" style="padding:14px;margin-bottom:12px;background:#111827;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <img class="thumb" src="${item.image_url}" alt="${item.title}">
+          <div>
+            <strong>${item.title}</strong><br>
+            <span class="pill ${item.status}">${item.status}</span>
+            ${item.matched ? '<span class="pill matched">matched</span>' : ''}
+            <p class="muted">${item.description || 'No description'}</p>
+            <button class="btn danger" onclick="deleteItem(${item.id})">Delete</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function deleteItem(id) {
+    const res = await fetch(`/delete/${id}`, {method:'DELETE'});
+    const data = await res.json();
+    alert(data.message);
+    loadItems();
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const res = await fetch('/upload', {method:'POST', body:form});
+    const data = await res.json();
+    document.getElementById('message').innerHTML = `<div class="notice">${data.message}${data.similarity ? ` — ${data.similarity}% similarity` : ''}</div>`;
+    if (res.ok) {
+      e.target.reset();
+      loadItems();
+    }
+  });
+
+  loadItems();
+</script>
+{% endblock %}

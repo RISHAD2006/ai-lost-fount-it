@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="grid" style="max-width:520px;margin:48px auto;">
+  <div class="card">
+    <h2>Admin Login</h2>
+    <p class="muted">Use the admin account configured in your environment variables.</p>
+    <div class="notice">
+      <strong>Default local admin:</strong><br>
+      Email: admin@example.com<br>
+      Password: admin123
+    </div>
+    <div id="message"></div>
+    <form id="adminLoginForm">
+      <label>Email<input type="email" name="email" required></label>
+      <label>Password<input type="password" name="password" required></label>
+      <button class="btn" type="submit">Open Admin Panel</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const payload = Object.fromEntries(form.entries());
+    const res = await fetch('/admin/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await res.json();
+    document.getElementById('message').innerHTML = `<div class="notice">${data.message}</div>`;
+    if (res.ok) location.href = data.redirect || '/admin';
+  });
+</script>
+{% endblock %}

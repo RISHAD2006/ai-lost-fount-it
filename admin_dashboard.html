@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <div class="pill matched">Administrator</div>
+  <h1 style="margin-top:14px;">Admin Panel</h1>
+  <p class="muted">Monitor users, review all uploaded items, update statuses, and remove invalid reports.</p>
+</section>
+<section class="grid grid-4">
+  <div class="card"><div class="stats">{{ stats.users }}</div><div class="muted">Users</div></div>
+  <div class="card"><div class="stats">{{ stats.items }}</div><div class="muted">Total items</div></div>
+  <div class="card"><div class="stats">{{ stats.lost }}</div><div class="muted">Lost reports</div></div>
+  <div class="card"><div class="stats">{{ stats.found }}</div><div class="muted">Found reports</div></div>
+</section>
+
+<div class="grid grid-2" style="margin-top:22px;align-items:start;">
+  <div class="card">
+    <h3>All Users</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.email }}</td>
+          <td>{% if u.is_admin %}<span class="pill matched">Admin</span>{% else %}<span class="pill found">Student</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>System Notes</h3>
+    <ul class="muted" style="line-height:1.9;padding-left:18px;">
+      <li>Only admin users can access this page.</li>
+      <li>Status can be changed to lost, found, or returned.</li>
+      <li>Deleting an item removes it from student and admin views.</li>
+      <li>You can toggle the match flag manually if needed.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:22px;overflow:auto;">
+  <h3>All Item Reports</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Image</th>
+        <th>Item</th>
+        <th>Owner</th>
+        <th>Status</th>
+        <th>Match</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><img class="thumb" src="{{ item.image_url }}" alt="{{ item.title }}"></td>
+        <td><strong>{{ item.title }}</strong><br><span class="muted">{{ item.description }}</span></td>
+        <td>
+          {% set owner = users | selectattr('id', 'equalto', item.user_id) | list | first %}
+          {{ owner.name if owner else 'Unknown' }}<br>
+          <span class="muted">{{ owner.email if owner else '' }}</span>
+        </td>
+        <td>
+          <select onchange="updateStatus({{ item.id }}, this.value)">
+            <option value="lost" {% if item.status == 'lost' %}selected{% endif %}>lost</option>
+            <option value="found" {% if item.status == 'found' %}selected{% endif %}>found</option>
+            <option value="returned" {% if item.status == 'returned' %}selected{% endif %}>returned</option>
+          </select>
+        </td>
+        <td>
+          {% if item.matched %}<span class="pill matched">Matched</span>{% else %}<span class="pill lost">Not matched</span>{% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            <button class="btn secondary" onclick="toggleMatch({{ item.id }})">Toggle Match</button>
+            <button class="btn danger" onclick="deleteAdminItem({{ item.id }})">Delete</button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function updateStatus(itemId, status) {
+    const res = await fetch(`/admin/items/${itemId}/status`, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({status})
+    });
+    const data = await res.json();
+    alert(data.message);
+    if (res.ok) location.reload();
+  }
+  async function toggleMatch(itemId) {
+    const res = await fetch(`/admin/items/${itemId}/toggle-match`, {method:'PATCH'});
+    const data = await res.json();
+    alert(data.message);
+    if (res.ok) location.reload();
+  }
+  async function deleteAdminItem(itemId) {
+    if (!confirm('Delete this item?')) return;
+    const res = await fetch(`/admin/items/${itemId}`, {method:'DELETE'});
+    const data = await res.json();
+    alert(data.message);
+    if (res.ok) location.reload();
+  }
+</script>
+{% endblock %}

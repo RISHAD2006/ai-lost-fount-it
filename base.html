@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Campus Found-It AI{% endblock %}</title>
+  <style>
+    :root {
+      --bg:#0f172a;
+      --panel:#111827;
+      --card:#1f2937;
+      --line:#334155;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --primary:#38bdf8;
+      --green:#22c55e;
+      --red:#ef4444;
+      --amber:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#020617,#0f172a 45%,#111827);color:var(--text)}
+    a{text-decoration:none;color:inherit}
+    .container{max-width:1180px;margin:0 auto;padding:24px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:rgba(2,6,23,.82);backdrop-filter:blur(12px);z-index:10}
+    .brand{font-weight:800;letter-spacing:.3px}
+    .nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn,.button{background:var(--primary);color:#00111a;border:none;border-radius:12px;padding:10px 16px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--text);border:1px solid var(--line)}
+    .btn.danger{background:var(--red);color:white}
+    .grid{display:grid;gap:18px}
+    .grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    .grid-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+    .card{background:rgba(31,41,55,.88);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.24)}
+    .hero{padding:56px 0 28px}
+    h1,h2,h3{margin-top:0}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .lost{background:rgba(239,68,68,.16);color:#fca5a5}
+    .found{background:rgba(34,197,94,.16);color:#86efac}
+    .returned{background:rgba(245,158,11,.16);color:#fcd34d}
+    .matched{background:rgba(56,189,248,.16);color:#7dd3fc}
+    input,select,textarea{width:100%;margin-top:8px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1220;color:var(--text)}
+    form label{display:block;margin-bottom:14px;font-size:14px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:12px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:top}
+    .stats{font-size:28px;font-weight:800}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .thumb{width:74px;height:74px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,.08)}
+    .notice{padding:12px 14px;border-radius:12px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.25);margin-bottom:16px}
+    @media (max-width:700px){.topbar{padding:16px}.container{padding:16px}th:nth-child(3),td:nth-child(3),th:nth-child(4),td:nth-child(4){display:none}}
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="/">Campus Found-It AI</a>
+    <div class="nav">
+      <a class="btn secondary" href="/">Home</a>
+      {% if user %}
+        {% if user.is_admin %}
+          <a class="btn secondary" href="/admin">Admin Panel</a>
+        {% else %}
+          <a class="btn secondary" href="/dashboard">Dashboard</a>
+        {% endif %}
+        <button class="btn" onclick="logoutUser()">Logout</button>
+      {% else %}
+        <a class="btn secondary" href="/login-page">Login</a>
+        <a class="btn" href="/register-page">Register</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="container">{% block content %}{% endblock %}</div>
+  <script>
+    async function logoutUser(){
+      await fetch('/logout',{method:'POST'});
+      location.href='/';
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
