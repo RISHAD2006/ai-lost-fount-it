@@ -2,63 +2,136 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Login – Campus Found-It AI</title>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #0f172a, #1e293b);
-      display: flex; justify-content: center; align-items: center; min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
+
     .card {
-      background: white; padding: 44px 40px; width: 380px;
-      border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); text-align: center;
+      background: white;
+      padding: 44px 40px;
+      width: 380px;
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+      text-align: center;
     }
-    .card h2 { color: #0f172a; margin-bottom: 6px; font-size: 22px; }
-    .card p  { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+
+    .card h2 {
+      color: #0f172a;
+      margin-bottom: 6px;
+      font-size: 22px;
+    }
+
+    .card p {
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 24px;
+    }
+
     input {
-      width: 100%; padding: 12px 14px; margin: 7px 0;
-      border-radius: 9px; border: 1px solid #cbd5e1;
-      font-size: 14px; outline: none; transition: border 0.2s;
+      width: 100%;
+      padding: 12px 14px;
+      margin: 7px 0;
+      border-radius: 9px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
     }
-    input:focus { border-color: #0f172a; }
+
+    input:focus {
+      border-color: #0f172a;
+    }
+
     .btn {
-      width: 100%; padding: 13px; background: #0f172a;
-      border: none; color: white; font-weight: bold; border-radius: 9px;
-      cursor: pointer; font-size: 15px; margin-top: 12px; transition: 0.2s;
+      width: 100%;
+      padding: 13px;
+      background: #0f172a;
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 15px;
+      margin-top: 12px;
+      transition: 0.2s;
     }
-    .btn:hover { background: #1e293b; }
-    .msg { margin-top: 12px; font-size: 13px; color: #dc2626; min-height: 18px; }
+
+    .btn:hover {
+      background: #1e293b;
+    }
+
+    .msg {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #dc2626;
+      min-height: 18px;
+    }
   </style>
 </head>
+
 <body>
+
 <div class="card">
   <h2>🔐 Admin Login</h2>
   <p>Campus Found-It AI — Admin Panel</p>
-  <input type="email"    id="email"    placeholder="Admin Email" />
+
+  <input type="email" id="email" placeholder="Admin Email" />
   <input type="password" id="password" placeholder="Admin Password" />
+
   <button class="btn" onclick="adminLogin()">Login as Admin</button>
+
   <div class="msg" id="msg"></div>
 </div>
 
 <script>
 async function adminLogin() {
-  const email    = document.getElementById("email").value.trim();
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
-  const msgEl    = document.getElementById("msg");
+  const msgEl = document.getElementById("msg");
 
-  const res  = await fetch("/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-    credentials: "same-origin"
-  });
-  const data = await res.json();
-  msgEl.textContent = data.message;
+  // ✅ Empty validation
+  if (!email || !password) {
+    msgEl.textContent = "Enter email & password";
+    return;
+  }
 
-  if (res.ok) setTimeout(() => location.href = data.redirect, 600);
+  try {
+    const res = await fetch("/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "same-origin"
+    });
+
+    const data = await res.json();
+
+    msgEl.textContent = data.message;
+
+    if (res.ok) {
+      msgEl.style.color = "green";
+      setTimeout(() => {
+        window.location.href = data.redirect;
+      }, 600);
+    } else {
+      msgEl.style.color = "red";
+    }
+
+  } catch (error) {
+    msgEl.textContent = "Server error. Try again.";
+  }
 }
 </script>
+
 </body>
 </html>
