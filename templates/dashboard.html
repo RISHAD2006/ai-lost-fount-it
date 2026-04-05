@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login – Campus Found-It AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="center-page" style="background:linear-gradient(135deg,#0f172a,#1e293b);">
+
+<div class="auth-card">
+  <h2>🔐 Admin Login</h2>
+  <p class="subtitle">Campus Found-It AI — Admin Panel</p>
+
+  <input class="input" type="email"    id="email"    placeholder="Admin Email">
+  <input class="input" type="password" id="password" placeholder="Admin Password">
+
+  <button class="btn btn-dark full-width" onclick="doAdminLogin()">Login as Admin</button>
+  <div class="msg" id="msg"></div>
+
+  <p class="switch-link"><a href="/">← Back to Home</a></p>
+</div>
+
+<script>
+async function doAdminLogin() {
+  const email    = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const msgEl    = document.getElementById("msg");
+
+  showMsg("Logging in...", "info");
+
+  const res  = await fetch("/api/admin-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+    credentials: "same-origin"
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    showMsg("Success! Redirecting...", "success");
+    setTimeout(() => location.href = "/admin", 600);
+  } else {
+    showMsg(data.error || "Login failed", "error");
+  }
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.className   = "msg msg-" + type;
+}
+</script>
+</body>
+</html>
