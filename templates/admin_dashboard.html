@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard - Campus Found-It AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .topbar {
+            background: #0f172a;
+            color: white;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .topbar h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .topbar a {
+            text-decoration: none;
+            color: white;
+            background: #ef4444;
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 24px auto;
+            padding: 0 16px 40px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+        }
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 15px;
+            color: #475569;
+        }
+        .card p {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .section {
+            background: white;
+            border-radius: 14px;
+            padding: 18px;
+            margin-top: 20px;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+        }
+        .section h2 {
+            margin-top: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            overflow-x: auto;
+        }
+        th, td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+        th {
+            background: #f8fafc;
+        }
+        select, button {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        .btn {
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-save {
+            background: #2563eb;
+        }
+        .btn-delete {
+            background: #dc2626;
+        }
+        .pill {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .lost { background: #fee2e2; color: #b91c1c; }
+        .found { background: #dcfce7; color: #15803d; }
+        .returned { background: #dbeafe; color: #1d4ed8; }
+        .matched-yes { background: #dcfce7; color: #166534; }
+        .matched-no { background: #e2e8f0; color: #334155; }
+        .img-preview {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        .table-wrap {
+            overflow-x: auto;
+        }
+        .muted {
+            color: #64748b;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <div class="muted">Logged in as: {{ admin_email }}</div>
+        </div>
+        <a href="/admin/logout">Logout</a>
+    </div>
+
+    <div class="container">
+        <div class="stats">
+            <div class="card"><h3>Total Users</h3><p id="total_users">0</p></div>
+            <div class="card"><h3>Total Items</h3><p id="total_items">0</p></div>
+            <div class="card"><h3>Lost Items</h3><p id="lost_count">0</p></div>
+            <div class="card"><h3>Found Items</h3><p id="found_count">0</p></div>
+            <div class="card"><h3>Returned</h3><p id="returned_count">0</p></div>
+            <div class="card"><h3>Matched</h3><p id="matched_count">0</p></div>
+        </div>
+
+        <div class="section">
+            <h2>Users</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Items</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>User ID</th>
+                            <th>Status</th>
+                            <th>Matched</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            const res = await fetch("/admin/stats", { credentials: "same-origin" });
+            if (res.status === 401) {
+                window.location.href = "/admin/login-page";
+                return;
+            }
+            const data = await res.json();
+            document.getElementById("total_users").innerText = data.total_users;
+            document.getElementById("total_items").innerText = data.total_items;
+            document.getElementById("lost_count").innerText = data.lost_count;
+            document.getElementById("found_count").innerText = data.found_count;
+            document.getElementById("returned_count").innerText = data.returned_count;
+            document.getElementById("matched_count").innerText = data.matched_count;
+        }
+
+        async function loadUsers() {
+            const res = await fetch("/admin/users", { credentials: "same-origin" });
+            if (res.status === 401) {
+                window.location.href = "/admin/login-page";
+                return;
+            }
+
+            const users = await res.json();
+            const tbody = document.getElementById("usersTable");
+            tbody.innerHTML = "";
+
+            users.forEach(user => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${escapeHtml(user.name)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function loadItems() {
+            const res = await fetch("/admin/items", { credentials: "same-origin" });
+            if (res.status === 401) {
+                window.location.href = "/admin/login-page";
+                return;
+            }
+
+            const items = await res.json();
+            const tbody = document.getElementById("itemsTable");
+            tbody.innerHTML = "";
+
+            items.forEach(item => {
+                const statusClass = item.status === "lost" ? "lost" :
+                                    item.status === "found" ? "found" : "returned";
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>
+                            ${item.image_url ? `<img src="${item.image_url}" class="img-preview" alt="item image" />` : "No image"}
+                        </td>
+                        <td>${escapeHtml(item.title)}</td>
+                        <td>${escapeHtml(item.description || "")}</td>
+                        <td>${item.user_id}</td>
+                        <td>
+                            <span class="pill ${statusClass}">${item.status}</span>
+                            <br><br>
+                            <select id="status-${item.id}">
+                                <option value="lost" ${item.status === "lost" ? "selected" : ""}>lost</option>
+                                <option value="found" ${item.status === "found" ? "selected" : ""}>found</option>
+                                <option value="returned" ${item.status === "returned" ? "selected" : ""}>returned</option>
+                            </select>
+                        </td>
+                        <td>
+                            <span class="pill ${item.matched ? "matched-yes" : "matched-no"}">
+                                ${item.matched ? "true" : "false"}
+                            </span>
+                            <br><br>
+                            <select id="matched-${item.id}">
+                                <option value="true" ${item.matched ? "selected" : ""}>true</option>
+                                <option value="false" ${!item.matched ? "selected" : ""}>false</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn btn-save" onclick="updateItem(${item.id})">Save</button>
+                            <br><br>
+                            <button class="btn btn-delete" onclick="deleteItem(${item.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function updateItem(itemId) {
+            const status = document.getElementById(`status-${itemId}`).value;
+            const matched = document.getElementById(`matched-${itemId}`).value === "true";
+
+            const res = await fetch(`/admin/item/${itemId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify({ status, matched })
+            });
+
+            const data = await res.json();
+            alert(data.message || "Updated");
+
+            await loadStats();
+            await loadItems();
+        }
+
+        async function deleteItem(itemId) {
+            if (!confirm("Delete this item?")) return;
+
+            const res = await fetch(`/admin/item/${itemId}`, {
+                method: "DELETE",
+                credentials: "same-origin"
+            });
+
+            const data = await res.json();
+            alert(data.message || "Deleted");
+
+            await loadStats();
+            await loadItems();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        async function init() {
+            await loadStats();
+            await loadUsers();
+            await loadItems();
+        }
+
+        init();
+    </script>
+</body>
+</html>
