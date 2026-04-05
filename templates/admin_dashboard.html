@@ -3,412 +3,371 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard – Campus Found-It AI</title>
-  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1828/1828640.png" />
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <title>Admin Dashboard – Campus Found-It AI</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; color: #1e293b; }
+    body { font-family: Arial, sans-serif; background: #f1f5f9; color: #0f172a; }
 
-    /* ── NAVBAR ── */
-    .navbar {
+    /* ── TOPBAR ── */
+    .topbar {
       background: #0f172a; color: white;
-      padding: 14px 24px;
+      padding: 16px 24px;
       display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 10px; position: sticky; top: 0; z-index: 100;
+      flex-wrap: wrap; gap: 10px;
+      position: sticky; top: 0; z-index: 100;
     }
-    .navbar h2 { font-size: 20px; }
-    .navbar .right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .navbar span { font-size: 13px; opacity: 0.75; }
-    .navbar button {
-      background: #ef4444; border: none; color: white;
-      padding: 7px 14px; border-radius: 7px; cursor: pointer; font-size: 13px;
-    }
-
-    /* ── MATCH POPUP ── */
-    .popup {
-      display: none; position: fixed; top: 20px; right: 20px; z-index: 999;
-      background: linear-gradient(135deg, #7c3aed, #4f46e5);
-      color: white; padding: 18px 24px; border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 320px;
-      animation: slideIn 0.4s ease;
-    }
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    .popup h4 { margin-bottom: 6px; font-size: 16px; }
-    .popup p  { font-size: 13px; opacity: 0.9; line-height: 1.5; }
-
-    /* ── MAIN ── */
-    .main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
-
-    /* ── SEARCH ── */
-    .search-bar {
-      display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;
-    }
-    .search-bar input {
-      flex: 1; min-width: 200px; padding: 11px 16px;
-      border-radius: 10px; border: 1px solid #cbd5e1;
-      font-size: 14px; outline: none;
-    }
-    .search-bar input:focus { border-color: #6366f1; }
-    .search-bar button {
-      padding: 11px 22px; background: #6366f1; color: white;
-      border: none; border-radius: 10px; cursor: pointer; font-size: 14px;
+    .topbar h1 { font-size: 22px; }
+    .topbar .sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+    .topbar a {
+      text-decoration: none; color: white; background: #ef4444;
+      padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: bold;
     }
 
-    /* ── UPLOAD CARD ── */
-    .upload-card {
-      background: white; border-radius: 16px;
-      padding: 24px; margin-bottom: 28px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-    }
-    .upload-card h3 { font-size: 18px; margin-bottom: 16px; color: #1e293b; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-row.single { grid-template-columns: 1fr; }
-    .form-row input, .form-row textarea, .form-row select {
-      width: 100%; padding: 10px 14px;
-      border-radius: 9px; border: 1px solid #cbd5e1;
-      font-size: 14px; outline: none; transition: border 0.2s;
-    }
-    .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
-      border-color: #6366f1;
-    }
-    .form-row textarea { resize: vertical; min-height: 80px; }
-    .upload-btn {
-      margin-top: 14px; padding: 12px 28px;
-      background: #6366f1; color: white; border: none;
-      border-radius: 10px; font-size: 15px; font-weight: bold;
-      cursor: pointer; transition: 0.2s; width: 100%;
-    }
-    .upload-btn:hover { background: #4f46e5; }
-    .upload-msg { margin-top: 10px; padding: 10px 14px; border-radius: 9px; font-size: 14px; display: none; }
-    .upload-msg.ok     { background: #dcfce7; color: #166534; }
-    .upload-msg.match  { background: #ede9fe; color: #5b21b6; font-weight: bold; }
-    .upload-msg.error  { background: #fee2e2; color: #991b1b; }
+    .container { max-width: 1300px; margin: 24px auto; padding: 0 16px 50px; }
 
-    /* ── TABS ── */
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .tab {
-      padding: 9px 20px; border-radius: 10px; border: 2px solid transparent;
-      cursor: pointer; font-size: 14px; font-weight: 600; transition: 0.2s;
-      background: white; color: #64748b;
-    }
-    .tab.active-all   { border-color: #6366f1; background: #6366f1; color: white; }
-    .tab.active-lost  { border-color: #ef4444; background: #ef4444; color: white; }
-    .tab.active-found { border-color: #10b981; background: #10b981; color: white; }
-    .tab.active-mine  { border-color: #f59e0b; background: #f59e0b; color: white; }
-
-    /* ── ITEMS GRID ── */
-    .items-grid {
+    /* ── STAT CARDS ── */
+    .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px; margin-bottom: 28px;
     }
-    .item-card {
-      background: white; border-radius: 14px; overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.07); transition: transform 0.2s;
+    .stat-card {
+      background: white; border-radius: 14px; padding: 18px 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07); text-align: center;
     }
-    .item-card:hover { transform: translateY(-3px); }
-    .item-card img {
-      width: 100%; height: 180px; object-fit: cover; display: block;
+    .stat-card .num { font-size: 34px; font-weight: bold; }
+    .stat-card .lbl { font-size: 13px; color: #64748b; margin-top: 4px; }
+    .c1 .num { color: #6366f1; }
+    .c2 .num { color: #0ea5e9; }
+    .c3 .num { color: #ef4444; }
+    .c4 .num { color: #10b981; }
+    .c5 .num { color: #3b82f6; }
+    .c6 .num { color: #8b5cf6; }
+
+    /* ── SECTION ── */
+    .section {
+      background: white; border-radius: 14px; padding: 20px;
+      margin-top: 22px; box-shadow: 0 4px 16px rgba(0,0,0,0.07);
     }
-    .item-info { padding: 14px; }
-    .item-info h4 { font-size: 15px; margin-bottom: 6px; }
-    .item-info p  { font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 8px; }
-    .item-meta { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .section-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .section-head h2 { font-size: 18px; }
+    .section-head input {
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid #cbd5e1; font-size: 13px; outline: none; width: 220px;
+    }
+
+    /* ── TABLE ── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+    th { background: #f8fafc; padding: 11px 10px; text-align: left;
+         font-weight: 700; color: #475569; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 11px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:hover td { background: #f8fafc; }
+
+    img.thumb {
+      width: 60px; height: 60px; object-fit: cover;
+      border-radius: 8px; border: 1px solid #e2e8f0;
+    }
+
+    /* ── PILLS ── */
     .pill {
-      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;
+      display: inline-block; padding: 3px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: bold;
     }
-    .pill-lost    { background: #fee2e2; color: #b91c1c; }
-    .pill-found   { background: #dcfce7; color: #166534; }
-    .pill-matched { background: #ede9fe; color: #5b21b6; }
-    .pill-score   { background: #fef3c7; color: #92400e; }
-    .contact-box {
-      margin-top: 8px; padding: 7px 10px;
-      background: #f0fdf4; border-radius: 7px;
-      font-size: 12px; color: #166534;
-      border: 1px solid #bbf7d0;
-    }
-    .contact-box b { display: block; margin-bottom: 2px; }
-    .del-btn {
-      margin-top: 8px; padding: 6px 14px;
-      background: #ef4444; color: white; border: none;
-      border-radius: 7px; font-size: 12px; cursor: pointer;
-    }
-    .del-btn:hover { background: #dc2626; }
+    .p-lost     { background: #fee2e2; color: #b91c1c; }
+    .p-found    { background: #dcfce7; color: #166534; }
+    .p-returned { background: #dbeafe; color: #1d4ed8; }
+    .p-yes      { background: #ede9fe; color: #5b21b6; }
+    .p-no       { background: #e2e8f0; color: #475569; }
 
-    .empty { text-align: center; color: #94a3b8; padding: 40px; grid-column: 1/-1; }
-    .loading { text-align: center; color: #6366f1; padding: 30px; grid-column: 1/-1; }
-
-    @media(max-width: 600px) {
-      .form-row { grid-template-columns: 1fr; }
+    /* ── BUTTONS ── */
+    .btn {
+      padding: 6px 12px; border: none; border-radius: 7px;
+      color: white; font-weight: bold; cursor: pointer; font-size: 12px;
     }
+    .btn-save { background: #2563eb; }
+    .btn-save:hover { background: #1d4ed8; }
+    .btn-del  { background: #dc2626; margin-left: 6px; }
+    .btn-del:hover  { background: #b91c1c; }
+
+    select {
+      padding: 5px 8px; border-radius: 7px;
+      border: 1px solid #cbd5e1; font-size: 12px;
+    }
+
+    .badge-match { background: #ede9fe; color: #5b21b6; }
+
+    /* ── EXPORT ── */
+    .export-btn {
+      padding: 8px 16px; background: #0f172a; color: white;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: bold;
+    }
+    .export-btn:hover { background: #1e293b; }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
-<div class="navbar">
-  <h2>🤖 Campus Found-It AI</h2>
-  <div class="right">
-    <span id="user-info"></span>
-    <button onclick="logout()">Logout</button>
+<div class="topbar">
+  <div>
+    <h1>🛡 Admin Dashboard</h1>
+    <div class="sub">Logged in as: {{ admin_email }}</div>
   </div>
+  <a href="/admin/logout">Logout</a>
 </div>
 
-<!-- MATCH POPUP -->
-<div class="popup" id="popup">
-  <h4>🎉 AI MATCH FOUND!</h4>
-  <p id="popup-detail"></p>
+<div class="container">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card c1"><div class="num" id="s-users">–</div><div class="lbl">Total Users</div></div>
+    <div class="stat-card c2"><div class="num" id="s-items">–</div><div class="lbl">Total Items</div></div>
+    <div class="stat-card c3"><div class="num" id="s-lost">–</div><div class="lbl">Lost Items</div></div>
+    <div class="stat-card c4"><div class="num" id="s-found">–</div><div class="lbl">Found Items</div></div>
+    <div class="stat-card c5"><div class="num" id="s-ret">–</div><div class="lbl">Returned</div></div>
+    <div class="stat-card c6"><div class="num" id="s-match">–</div><div class="lbl">AI Matched</div></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="section">
+    <div class="section-head">
+      <h2>👤 Registered Users</h2>
+      <button class="export-btn" onclick="exportCSV('users')">⬇ Export CSV</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOST ITEMS -->
+  <div class="section">
+    <div class="section-head">
+      <h2>🔴 Lost Items</h2>
+      <input id="filter-lost" placeholder="Search lost items..." oninput="filterTable('lost-tbody', this.value)" />
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Image</th><th>Title</th><th>Description</th><th>Contact</th><th>User ID</th><th>Matched</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="lost-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FOUND ITEMS -->
+  <div class="section">
+    <div class="section-head">
+      <h2>🟢 Found Items</h2>
+      <input id="filter-found" placeholder="Search found items..." oninput="filterTable('found-tbody', this.value)" />
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Image</th><th>Title</th><th>Description</th><th>Contact</th><th>User ID</th><th>Matched</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="found-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RETURNED / MATCHED -->
+  <div class="section">
+    <div class="section-head">
+      <h2>✅ Returned / Matched Items</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Image</th><th>Title</th><th>Status</th><th>Contact</th><th>User ID</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="returned-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
-
-<div class="main">
-
-  <!-- SEARCH -->
-  <div class="search-bar">
-    <input id="search-input" placeholder="Search items by name (e.g. black bag, phone, keys)..." />
-    <button onclick="searchItems()">🔍 Search</button>
-  </div>
-
-  <!-- UPLOAD CARD -->
-  <div class="upload-card">
-    <h3>📤 Upload Lost / Found Item</h3>
-
-    <div class="form-row">
-      <input id="title"   placeholder="Item Title (e.g. Blue Water Bottle)" />
-      <input id="contact" placeholder="Your Phone or Email for contact" />
-    </div>
-    <div class="form-row single" style="margin-top:12px">
-      <textarea id="description" placeholder="Describe the item — colour, brand, unique marks..."></textarea>
-    </div>
-    <div class="form-row" style="margin-top:12px">
-      <select id="status">
-        <option value="lost">🔴 I Lost this Item</option>
-        <option value="found">🟢 I Found this Item</option>
-      </select>
-      <input type="file" id="image" accept="image/*" />
-    </div>
-
-    <button class="upload-btn" onclick="uploadItem()">Upload &amp; Find Match →</button>
-    <div class="upload-msg" id="upload-msg"></div>
-  </div>
-
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active-all"  onclick="switchTab('all')"  id="tab-all">📋 All Items</button>
-    <button class="tab"             onclick="switchTab('lost')" id="tab-lost">🔴 Lost Items</button>
-    <button class="tab"             onclick="switchTab('found')"id="tab-found">🟢 Found Items</button>
-    <button class="tab"             onclick="switchTab('mine')" id="tab-mine">👤 My Items</button>
-  </div>
-
-  <!-- ITEMS GRID -->
-  <div class="items-grid" id="items-grid">
-    <div class="loading">Loading items...</div>
-  </div>
-
-</div><!-- /main -->
 
 <script>
-const API     = window.location.origin;
-const userId  = localStorage.getItem("user_id");
-const name    = localStorage.getItem("name");
-const email   = localStorage.getItem("email");
+// ── Data stores ──
+let allUsers = [];
+let allItems = [];
 
-if (!userId) location.href = "/login-page";
-
-document.getElementById("user-info").textContent = `${name} (${email})`;
-
-// ── Socket.IO ──
-const socket = io(API);
-socket.on("match_found", data => {
-  if (data.user1 == userId || data.user2 == userId) {
-    const popup  = document.getElementById("popup");
-    const detail = document.getElementById("popup-detail");
-    detail.innerHTML =
-      `<b>${data.matched_title}</b><br/>Score: ${data.score}%` +
-      (data.contact ? `<br/>📞 Contact: ${data.contact}` : "");
-    popup.style.display = "block";
-    setTimeout(() => popup.style.display = "none", 6000);
-    loadItems(currentTab);
-  }
-});
-
-// ── Tabs ──
-let currentTab = "all";
-function switchTab(tab) {
-  currentTab = tab;
-  ["all","lost","found","mine"].forEach(t => {
-    const el = document.getElementById("tab-" + t);
-    el.className = "tab";
-    if (t === tab) el.classList.add("active-" + t);
-  });
-  loadItems(tab);
+async function init() {
+  await loadStats();
+  await loadUsers();
+  await loadItems();
 }
 
-// ── Load items ──
-async function loadItems(tab) {
-  const grid = document.getElementById("items-grid");
-  grid.innerHTML = '<div class="loading">Loading...</div>';
-
-  let url;
-  if (tab === "mine") {
-    url = `${API}/my-items/${userId}`;
-  } else if (tab === "lost") {
-    url = `${API}/all-items?status=lost`;
-  } else if (tab === "found") {
-    url = `${API}/all-items?status=found`;
-  } else {
-    url = `${API}/all-items`;
-  }
-
-  try {
-    const res   = await fetch(url);
-    const items = await res.json();
-    renderItems(items, tab === "mine");
-  } catch (e) {
-    grid.innerHTML = '<div class="empty">Failed to load items.</div>';
-  }
+async function loadStats() {
+  const res  = await fetch("/admin/stats", { credentials: "same-origin" });
+  if (res.status === 401) { location.href = "/admin/login-page"; return; }
+  const d = await res.json();
+  document.getElementById("s-users").textContent = d.total_users;
+  document.getElementById("s-items").textContent = d.total_items;
+  document.getElementById("s-lost").textContent  = d.lost_count;
+  document.getElementById("s-found").textContent = d.found_count;
+  document.getElementById("s-ret").textContent   = d.returned_count;
+  document.getElementById("s-match").textContent = d.matched_count;
 }
 
-function renderItems(items, showDelete) {
-  const grid = document.getElementById("items-grid");
-  if (!items.length) {
-    grid.innerHTML = '<div class="empty">No items found.</div>';
-    return;
-  }
-  grid.innerHTML = items.map(i => itemHTML(i, showDelete)).join("");
+async function loadUsers() {
+  const res = await fetch("/admin/users", { credentials: "same-origin" });
+  if (res.status === 401) { location.href = "/admin/login-page"; return; }
+  allUsers = await res.json();
+  const tbody = document.getElementById("users-tbody");
+  tbody.innerHTML = allUsers.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${esc(u.name)}</td>
+      <td>${esc(u.email)}</td>
+      <td>${esc(u.phone || "–")}</td>
+    </tr>
+  `).join("");
 }
 
-function itemHTML(i, showDel) {
-  const img = i.image_url
-    ? `<img src="${i.image_url}" alt="item" />`
-    : `<div style="height:180px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:40px;">📦</div>`;
+async function loadItems() {
+  const res = await fetch("/admin/items", { credentials: "same-origin" });
+  if (res.status === 401) { location.href = "/admin/login-page"; return; }
+  allItems = await res.json();
 
-  const statusPill = i.status === "lost"
-    ? `<span class="pill pill-lost">🔴 Lost</span>`
-    : `<span class="pill pill-found">🟢 Found</span>`;
+  const lostItems     = allItems.filter(i => i.status === "lost");
+  const foundItems    = allItems.filter(i => i.status === "found");
+  const retItems      = allItems.filter(i => i.status === "returned" || i.matched);
 
-  const matchPill = i.matched
-    ? `<span class="pill pill-matched">🤖 AI Matched</span>` : "";
+  document.getElementById("lost-tbody").innerHTML    = lostItems.map(rowHTML).join("");
+  document.getElementById("found-tbody").innerHTML   = foundItems.map(rowHTML).join("");
+  document.getElementById("returned-tbody").innerHTML = retItems.map(retRowHTML).join("");
+}
 
-  const contactBox = i.contact
-    ? `<div class="contact-box"><b>📞 Contact:</b>${escHtml(i.contact)}</div>` : "";
+function rowHTML(item) {
+  const img = item.image_url
+    ? <img src="${item.image_url}" class="thumb" />
+    : "No image";
 
-  const delBtn = showDel
-    ? `<button class="del-btn" onclick="deleteItem(${i.id})">🗑 Delete</button>` : "";
+  const matchPill = item.matched
+    ? <span class="pill p-yes">✅ Yes</span>
+    : <span class="pill p-no">No</span>;
 
   return `
-  <div class="item-card">
-    ${img}
-    <div class="item-info">
-      <h4>${escHtml(i.title)}</h4>
-      <p>${escHtml(i.description || "No description")}</p>
-      <div class="item-meta">${statusPill} ${matchPill}</div>
-      ${contactBox}
-      ${delBtn}
-    </div>
-  </div>`;
+  <tr id="row-${item.id}">
+    <td>${item.id}</td>
+    <td>${img}</td>
+    <td>${esc(item.title)}</td>
+    <td>${esc(item.description || "–")}</td>
+    <td>${esc(item.contact || "–")}</td>
+    <td>${item.user_id}</td>
+    <td>
+      ${matchPill}<br/><br/>
+      <select id="matched-${item.id}">
+        <option value="true"  ${item.matched ? "selected":""}>Matched</option>
+        <option value="false" ${!item.matched? "selected":""}>Not Matched</option>
+      </select>
+    </td>
+    <td>
+      <button class="btn btn-save" onclick="updateItem(${item.id})">Save</button>
+      <button class="btn btn-del"  onclick="deleteItem(${item.id})">Delete</button>
+      <br/><br/>
+      <select id="status-${item.id}">
+        <option value="lost"     ${item.status==="lost"?    "selected":""}>Lost</option>
+        <option value="found"    ${item.status==="found"?   "selected":""}>Found</option>
+        <option value="returned" ${item.status==="returned"?"selected":""}>Returned</option>
+      </select>
+    </td>
+  </tr>`;
 }
 
-// ── Search ──
-async function searchItems() {
-  const q    = document.getElementById("search-input").value.trim();
-  if (!q) { loadItems(currentTab); return; }
-  const grid = document.getElementById("items-grid");
-  grid.innerHTML = '<div class="loading">Searching...</div>';
-  const res   = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
-  const items = await res.json();
-  if (!items.length) {
-    grid.innerHTML = '<div class="empty">No matching items found.</div>';
-    return;
-  }
-  grid.innerHTML = items.map(i => {
-    const scoreTag = `<span class="pill pill-score">🎯 ${i.score}% match</span>`;
-    return itemHTML(i, false).replace('</div>\n  </div>', `${scoreTag}</div>\n  </div>`);
-  }).join("");
-}
-document.getElementById("search-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") searchItems();
-});
-
-// ── Upload ──
-async function uploadItem() {
-  const title   = document.getElementById("title").value.trim();
-  const desc    = document.getElementById("description").value.trim();
-  const status  = document.getElementById("status").value;
-  const contact = document.getElementById("contact").value.trim();
-  const image   = document.getElementById("image").files[0];
-  const msgEl   = document.getElementById("upload-msg");
-
-  if (!title || !image) {
-    showMsg("Please enter a title and choose an image.", "error");
-    return;
-  }
-
-  showMsg("Uploading and running AI match...", "ok");
-
-  const form = new FormData();
-  form.append("title",       title);
-  form.append("description", desc);
-  form.append("status",      status);
-  form.append("user_id",     userId);
-  form.append("contact",     contact);
-  form.append("image",       image);
-
-  try {
-    const res  = await fetch(`${API}/upload`, { method: "POST", body: form });
-    const data = await res.json();
-
-    if (data.match_score && data.match_score >= 40) {
-      showMsg(
-        `🎉 MATCH FOUND! Score: ${data.match_score}%  |  Item: "${data.matched_item}"` +
-        (data.contact ? `  |  Contact: ${data.contact}` : ""),
-        "match"
-      );
-    } else {
-      showMsg(data.message || "Uploaded successfully!", "ok");
-    }
-
-    // Clear form
-    document.getElementById("title").value       = "";
-    document.getElementById("description").value = "";
-    document.getElementById("contact").value     = "";
-    document.getElementById("image").value       = "";
-
-    loadItems(currentTab);
-  } catch (e) {
-    showMsg("Upload failed. Please try again.", "error");
-  }
+function retRowHTML(item) {
+  const img = item.image_url
+    ? <img src="${item.image_url}" class="thumb" />
+    : "No image";
+  const statusPill =
+    item.status === "returned" ? <span class="pill p-returned">Returned</span> :
+    item.status === "lost"     ? <span class="pill p-lost">Lost</span> :
+                                 <span class="pill p-found">Found</span>;
+  return `
+  <tr>
+    <td>${item.id}</td>
+    <td>${img}</td>
+    <td>${esc(item.title)}</td>
+    <td>${statusPill}</td>
+    <td>${esc(item.contact || "–")}</td>
+    <td>${item.user_id}</td>
+    <td>
+      <button class="btn btn-del" onclick="deleteItem(${item.id})">Delete</button>
+    </td>
+  </tr>`;
 }
 
-function showMsg(text, type) {
-  const el = document.getElementById("upload-msg");
-  el.textContent = text;
-  el.className   = "upload-msg " + type;
-  el.style.display = "block";
+async function updateItem(id) {
+  const status  = document.getElementById(status-${id}).value;
+  const matched = document.getElementById(matched-${id}).value === "true";
+
+  const res  = await fetch(/admin/item/${id}, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ status, matched })
+  });
+  const data = await res.json();
+  alert(data.message || "Updated!");
+  await loadStats();
+  await loadItems();
 }
 
-// ── Delete ──
 async function deleteItem(id) {
-  if (!confirm("Delete this item?")) return;
-  await fetch(`${API}/delete/${id}`, { method: "DELETE" });
-  loadItems(currentTab);
+  if (!confirm("Delete this item permanently?")) return;
+  const res  = await fetch(/admin/item/${id}, {
+    method: "DELETE", credentials: "same-origin"
+  });
+  const data = await res.json();
+  alert(data.message);
+  await loadStats();
+  await loadItems();
 }
 
-// ── Logout ──
-function logout() {
-  localStorage.clear();
-  location.href = "/login-page";
+// ── Filter table rows ──
+function filterTable(tbodyId, query) {
+  const tbody = document.getElementById(tbodyId);
+  const rows  = tbody.querySelectorAll("tr");
+  query = query.toLowerCase();
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(query) ? "" : "none";
+  });
 }
 
-function escHtml(s) {
+// ── Export CSV ──
+function exportCSV(type) {
+  let rows, headers;
+  if (type === "users") {
+    headers = ["ID","Name","Email","Phone"];
+    rows = allUsers.map(u => [u.id, u.name, u.email, u.phone || ""]);
+  }
+  const csv = [headers, ...rows].map(r => r.map(c => "${c}").join(",")).join("\n");
+  const a   = document.createElement("a");
+  a.href    = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = type + "_export.csv";
+  a.click();
+}
+
+function esc(s) {
   const d = document.createElement("div");
   d.innerText = s || "";
   return d.innerHTML;
 }
 
-// Initial load
-loadItems("all");
+init();
 </script>
 </body>
 </html>
